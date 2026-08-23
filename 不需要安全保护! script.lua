@@ -8,22 +8,22 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 local Window = WindUI:CreateWindow({
-    Title = "No Safety Needed",
+    Title = "完美![木工!]script",
     Icon = "sparkles",
-    Author = "No Safety Needed",
-    Folder = "NoSafetyNeeded",
+    Author = "完美![木工!]script",
+    Folder = "完美![木工!]script",
     Size = UDim2.fromOffset(420, 420),
     Theme = "Pink",
     HideSearchBar = false,
 })
 
 Window:Tag({
-    Title = "No Safety Needed",
+    Title = "完美![木工!]script",
     Color = Color3.fromHex("#7FDBFF")
 })
 
 Window:EditOpenButton({
-    Title = "No Safety Needed",
+    Title = "完美![木工!]script",
     Icon = "monitor",
     CornerRadius = UDim.new(0, 16),
     StrokeThickness = 2,
@@ -32,7 +32,7 @@ Window:EditOpenButton({
 })
 
 local Tab = Window:Tab({
-    Title = "自动刷钱/经验",
+    Title = "自动刷钱",
     Icon = "settings",
     Locked = false,
 })
@@ -40,8 +40,8 @@ local Tab = Window:Tab({
 Tab:Section({ Title = "功能", TextXAlignment = "Left", TextSize = 17 })
 
 Tab:Paragraph({
-    Title = "自动刷钱/经验说明",
-    Desc = "使用前请在服务器内设置里开启禁用建造者身份来保持游戏环境(否则无法使用)",
+    Title = "自动刷钱说明",
+    Desc = "使用前请在服务器内设置里开启Disable Witch来保持游戏环境(否则无法使用)",
 })
 
 getgenv().BobuxAutoFarm = false
@@ -52,8 +52,6 @@ getgenv().BobuxSuccessCount = 0
 getgenv().SafeFly = false
 getgenv().SafeFlyRunning = false
 getgenv().OldTeleport = false
-
-local TARGET_ASSET_ID = "130396712201457"
 
 local KEY_CODE = "FSNB666"
 getgenv().BobuxKeyUnlocked = false
@@ -110,6 +108,9 @@ local function setupCharacter(char)
         task.wait(0.5)
         startFlight()
     end
+    if getgenv().OldTeleport then
+        startOldTeleport()
+    end
 end
 
 if player.Character then
@@ -126,15 +127,26 @@ local function getHRP()
 end
 
 local function getMapFolder()
-    local map = workspace:FindFirstChild("map")
+    local map = workspace:FindFirstChild("Map")
     if not map then
         for _, v in ipairs(workspace:GetChildren()) do
-            if v:IsA("Folder") and v.Name:lower() == "map" then
+            if v.Name:lower() == "map" then
                 return v
             end
         end
     end
     return map
+end
+
+local function getCharactersFolder()
+    local chars = workspace:FindFirstChild("Characters")
+    if chars then return chars end
+    for _, v in ipairs(workspace:GetChildren()) do
+        if v.Name:lower() == "characters" then
+            return v
+        end
+    end
+    return nil
 end
 
 local function getInstancePosition(instance)
@@ -151,6 +163,14 @@ local function getInstancePosition(instance)
         local part = instance:FindFirstChildWhichIsA("BasePart", true)
         if part then return part.Position end
     end
+    local ok, pos = pcall(function() return instance.Position end)
+    if ok and pos and typeof(pos) == "Vector3" then
+        return pos
+    end
+    local ok2, cf = pcall(function() return instance.CFrame end)
+    if ok2 and cf and typeof(cf) == "CFrame" then
+        return cf.Position
+    end
     local part = instance:FindFirstChildWhichIsA("BasePart", true)
     if part then return part.Position end
     return nil
@@ -160,6 +180,7 @@ getgenv().BobuxFlightSpeed = 35
 getgenv().BobuxIsFlying = false
 getgenv().BobuxAutoTarget = nil
 local flightConnection = nil
+local oldTeleportConn = nil
 
 startFlight = function()
     if getgenv().BobuxIsFlying then return end
@@ -198,51 +219,178 @@ stopFlight = function()
     getgenv().BobuxAutoTarget = nil
 end
 
-local function findInMap(name)
-    local map = getMapFolder()
-    if not map then return nil end
-    return map:FindFirstChild(name, true)
+local function startOldTeleport()
+    if oldTeleportConn then return end
+
+    oldTeleportConn = RunService.Heartbeat:Connect(function()
+        if not getgenv().OldTeleport then return end
+
+        local char = player.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        local targetPos = nil
+
+        if hasFishAccessory() then
+            local doors = findAllDoors()
+            if #doors > 0 then
+                local doorPos = getNearestTarget(doors)
+                if doorPos then
+                    targetPos = getDoorFrontPos(doorPos)
+                end
+            end
+        else
+            local fishes = findAllFish()
+            if #fishes > 0 then
+                targetPos = getNearestTarget(fishes)
+            end
+        end
+
+        if targetPos then
+            hrp.CFrame = CFrame.new(targetPos)
+        end
+    end)
 end
 
-local function hasAttachBobux()
+local function stopOldTeleport()
+    getgenv().OldTeleport = false
+    if oldTeleportConn then
+        oldTeleportConn:Disconnect()
+        oldTeleportConn = nil
+    end
+end
+
+local function getPlayerCharInCharacters()
+    local charsFolder = getCharactersFolder()
+    if not charsFolder then return nil end
+    
     local char = player.Character
-    if not char then return false end
-    return char:FindFirstChild("attachbobux", true) ~= nil
+    if char and char:IsDescendantOf(charsFolder) then
+        return char
+    end
+    
+    for _, v in ipairs(charsFolder:GetDescendants()) do
+        if v:IsA("Model") then
+            local plr = Players:GetPlayerFromCharacter(v)
+            if plr and plr == player then
+                return v
+            end
+        end
+    end
+    
+    for _, v in ipairs(charsFolder:GetDescendants()) do
+        if v:IsA("Model") and v.Name == player.Name then
+            if v:FindFirstChildOfClass("Humanoid") then
+                return v
+            end
+        end
+    end
+    
+    return nil
 end
 
-local function getLockBox()
+local function isPlayerInCharacters()
+    return getPlayerCharInCharacters() ~= nil
+end
+
+local function hasFishAccessory()
+    local char = player.Character
+    if char then
+        local fishAcc = char:FindFirstChild("FishAccessory", true)
+        if fishAcc then return true end
+    end
+    local playerChar = getPlayerCharInCharacters()
+    if playerChar then
+        local fishAcc = playerChar:FindFirstChild("FishAccessory", true)
+        if fishAcc then return true end
+    end
+    return false
+end
+
+local function findAllFish()
+    local map = getMapFolder()
+    if not map then return {} end
+    local fishes = {}
+    for _, v in ipairs(map:GetDescendants()) do
+        if v.Name == "Fish" then
+            local pos = getInstancePosition(v)
+            if pos then
+                table.insert(fishes, v)
+            end
+        end
+    end
+    return fishes
+end
+
+local function findAllDoors()
+    local map = getMapFolder()
+    if not map then return {} end
+    local doors = {}
+    for _, v in ipairs(map:GetDescendants()) do
+        if v.Name:sub(-4) == "Door" then
+            local pos = getInstancePosition(v)
+            if pos then
+                table.insert(doors, v)
+            end
+        end
+    end
+    return doors
+end
+
+local function getNearestTarget(targets)
+    local hrp = getHRP()
+    if not hrp then return nil end
+    local nearest = nil
+    local nearestDist = math.huge
+    for _, target in ipairs(targets) do
+        local pos = getInstancePosition(target)
+        if pos then
+            local dist = (hrp.Position - pos).Magnitude
+            if dist < nearestDist then
+                nearestDist = dist
+                nearest = pos
+            end
+        end
+    end
+    return nearest
+end
+
+local function getDoorFrontPos(doorPos, hrp)
+    if not doorPos then return nil end
+    if not hrp then hrp = getHRP() end
+    if not hrp then return doorPos end
+    local success, result = pcall(function()
+        local offset = hrp.Position - doorPos
+        if offset.Magnitude < 1 then return doorPos end
+        local dir = offset.Unit
+        return doorPos + dir * 2
+    end)
+    if success and result then
+        return result
+    end
+    return doorPos
+end
+
+local function getDisableWitchButton()
     local pg = player:FindFirstChild("PlayerGui")
     if not pg then return nil end
-    local current = pg
-    for _, name in ipairs({"settings", "Frame", "main", "scroll", "stopbuilder", "bool", "box"}) do
-        current = current:FindFirstChild(name)
-        if not current then return nil end
-    end
-    return current
+    local main = pg:FindFirstChild("Main")
+    if not main then return nil end
+    local settings = main:FindFirstChild("settings")
+    if not settings then return nil end
+    local container = settings:FindFirstChild("container")
+    if not container then return nil end
+    local disableWitch = container:FindFirstChild("DisableWitch")
+    if not disableWitch then return nil end
+    local button = disableWitch:FindFirstChild("button")
+    return button
 end
 
 local function checkUnlockCondition()
-    local box = getLockBox()
-    if not box then return false end
-
-    local img = box.Image
-    if type(img) == "string" and img:find(TARGET_ASSET_ID) then
-        return true
-    end
-
-    local ok, ic = pcall(function() return box.ImageContent end)
-    if ok and ic then
-        local s = tostring(ic)
-        if s and s:find(TARGET_ASSET_ID) then
-            return true
-        end
-        local ok2, uri = pcall(function() return ic.Uri end)
-        if ok2 and type(uri) == "string" and uri:find(TARGET_ASSET_ID) then
-            return true
-        end
-    end
-
-    return false
+    local button = getDisableWitchButton()
+    if not button then return false end
+    return button.Text == "X"
 end
 
 local function startLockLoop()
@@ -260,7 +408,7 @@ local function startLockLoop()
                     if not notifiedEnabled then
                         WindUI:Notify({
                             Title = "已解锁",
-                            Content = "检测到禁用建筑者身份已开启,自动刷钱/经验开始传送",
+                            Content = "检测到Disable Witch已开启,安全传送开始传送",
                             Duration = 4
                         })
                         notifiedEnabled = true
@@ -271,7 +419,7 @@ local function startLockLoop()
                     if not notifiedDisabled then
                         WindUI:Notify({
                             Title = "已锁定",
-                            Content = "检测到禁用建筑者身份未开启,请前往设置开启后使用",
+                            Content = "检测到Disable Witch未开启,请前往设置开启后使用",
                             Duration = 4
                         })
                         notifiedDisabled = true
@@ -290,6 +438,9 @@ local function startFarmLoop()
     getgenv().BobuxFarmRunning = true
 
     task.spawn(function()
+        local gotFishTime = nil
+        local lastHadFish = false
+
         while getgenv().BobuxAutoFarm do
             task.wait(0.001)
 
@@ -298,46 +449,84 @@ local function startFarmLoop()
                 continue
             end
 
-            if hasAttachBobux() then
-                local exitInst = findInMap("exit")
-                if exitInst then
-                    local pos = getInstancePosition(exitInst)
-                    if pos then
-                        if getgenv().OldTeleport then
-                            local hrp = getHRP()
-                            if hrp then
-                                hrp.CFrame = CFrame.new(pos)
-                                getgenv().BobuxSuccessCount = getgenv().BobuxSuccessCount + 1
+            if not isPlayerInCharacters() then
+                getgenv().BobuxAutoTarget = nil
+                continue
+            end
+
+            local hasFish = hasFishAccessory()
+
+            if hasFish then
+                if not lastHadFish then
+                    gotFishTime = tick()
+                end
+                if gotFishTime and tick() - gotFishTime >= 0.2 then
+                    local doors = findAllDoors()
+                    if #doors > 0 then
+                        local nearestDoor = getNearestTarget(doors)
+                        if nearestDoor then
+                            local nearest = getDoorFrontPos(nearestDoor)
+                            if getgenv().OldTeleport then
+                                local char = player.Character
+                                if char then
+                                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                                    if hrp then
+                                        hrp.Velocity = Vector3.zero
+                                        hrp.RotVelocity = Vector3.zero
+                                        hrp.CFrame = CFrame.new(nearest)
+                                    end
+                                    if not char.PrimaryPart and hrp then
+                                        char.PrimaryPart = hrp
+                                    end
+                                    char:PivotTo(CFrame.new(nearest))
+                                end
+                            else
+                                getgenv().BobuxAutoTarget = nearest
+                                local hrp = getHRP()
+                                if hrp and (hrp.Position - nearest).Magnitude < 3 then
+                                    getgenv().BobuxSuccessCount = getgenv().BobuxSuccessCount + 1
+                                    task.wait(1)
+                                end
                             end
                         else
-                            getgenv().BobuxAutoTarget = pos
-                            local hrp = getHRP()
-                            if hrp and (hrp.Position - pos).Magnitude < 3 then
-                                getgenv().BobuxSuccessCount = getgenv().BobuxSuccessCount + 1
-                            end
+                            getgenv().BobuxAutoTarget = nil
                         end
+                    else
+                        getgenv().BobuxAutoTarget = nil
                     end
-                else
-                    getgenv().BobuxAutoTarget = nil
                 end
             else
-                local bobuxInst = findInMap("bobux")
-                if bobuxInst then
-                    local pos = getInstancePosition(bobuxInst)
-                    if pos then
+                gotFishTime = nil
+                local fishes = findAllFish()
+                if #fishes > 0 then
+                    local nearest = getNearestTarget(fishes)
+                    if nearest then
                         if getgenv().OldTeleport then
-                            local hrp = getHRP()
-                            if hrp then
-                                hrp.CFrame = CFrame.new(pos)
+                            local char = player.Character
+                            if char then
+                                local hrp = char:FindFirstChild("HumanoidRootPart")
+                                if hrp then
+                                    hrp.Velocity = Vector3.zero
+                                    hrp.RotVelocity = Vector3.zero
+                                    hrp.CFrame = CFrame.new(nearest)
+                                end
+                                if not char.PrimaryPart and hrp then
+                                    char.PrimaryPart = hrp
+                                end
+                                char:PivotTo(CFrame.new(nearest))
                             end
                         else
-                            getgenv().BobuxAutoTarget = pos
+                            getgenv().BobuxAutoTarget = nearest
                         end
+                    else
+                        getgenv().BobuxAutoTarget = nil
                     end
                 else
                     getgenv().BobuxAutoTarget = nil
                 end
             end
+
+            lastHadFish = hasFish
         end
         getgenv().BobuxAutoTarget = nil
         getgenv().BobuxFarmRunning = false
@@ -345,7 +534,7 @@ local function startFarmLoop()
 end
 
 Tab:Toggle({
-    Title = "自动刷钱/经验",
+    Title = "安全传送",
     Default = false,
     Callback = function(Value)
         getgenv().BobuxAutoFarm = Value
@@ -360,7 +549,7 @@ Tab:Toggle({
             startLockLoop()
             WindUI:Notify({
                 Title = "已开启",
-                Content = "自动刷钱/经验已锁定,请开启禁用建筑者身份后才可以使用",
+                Content = "安全传送已锁定,请开启Disable Witch后才可以使用",
                 Duration = 4
             })
             if not getgenv().OldTeleport then
@@ -373,8 +562,29 @@ Tab:Toggle({
             stopFlight()
             WindUI:Notify({
                 Title = "已关闭",
-                Content = "自动刷钱/经验已停止",
+                Content = "安全传送已停止",
                 Duration = 3
+            })
+        end
+    end
+})
+
+Tab:Toggle({
+    Title = "瞬间传送",
+    Default = false,
+    Callback = function(Value)
+        getgenv().OldTeleport = Value
+        if Value then
+            WindUI:Notify({
+                Title = "瞬间传送已开启",
+                Content = "自动传送已启动",
+                Duration = 2
+            })
+        else
+            WindUI:Notify({
+                Title = "瞬间传送已关闭",
+                Content = "自动传送已停止",
+                Duration = 2
             })
         end
     end
@@ -448,21 +658,6 @@ Tab:Toggle({
     end
 })
 
-Tab:Toggle({
-    Title = "老传送版",
-    Default = false,
-    Callback = function(Value)
-        getgenv().OldTeleport = Value
-        if getgenv().BobuxAutoFarm then
-            if Value then
-                stopFlight()
-            else
-                startFlight()
-            end
-        end
-    end
-})
-
 Tab:Input({
     Title = "飞行速度",
     Placeholder = "默认 35",
@@ -506,8 +701,49 @@ task.spawn(function()
 end)
 
 WindUI:Notify({
-    Title = "No Safety Needed 开启成功",
+    Title = "完美![木工!]script 开启成功",
     Content = "请开始你的表演吧",
     Duration = 6
 })
 print("本脚本使用AI制作免费开源")
+
+local oldTeleportGlobalConn = nil
+if oldTeleportGlobalConn then oldTeleportGlobalConn:Disconnect() end
+oldTeleportGlobalConn = RunService.Heartbeat:Connect(function()
+    if not getgenv().OldTeleport then return end
+    if getgenv().BobuxAutoFarm then return end
+
+    if getgenv().BobuxLock and not getgenv().BobuxKeyUnlocked then
+        return
+    end
+
+    if not isPlayerInCharacters() then
+        return
+    end
+
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local targetPos = nil
+
+    if hasFishAccessory() then
+        local doors = findAllDoors()
+        if #doors > 0 then
+            local doorPos = getNearestTarget(doors)
+            if doorPos then
+                targetPos = getDoorFrontPos(doorPos, hrp)
+            end
+        end
+    else
+        local fishes = findAllFish()
+        if #fishes > 0 then
+            targetPos = getNearestTarget(fishes)
+        end
+    end
+
+    if targetPos then
+        hrp.CFrame = CFrame.new(targetPos)
+    end
+end)

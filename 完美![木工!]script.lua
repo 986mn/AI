@@ -32,7 +32,7 @@ Window:EditOpenButton({
 })
 
 local Tab = Window:Tab({
-    Title = "自动刷钱/经验",
+    Title = "自动刷钱",
     Icon = "settings",
     Locked = false,
 })
@@ -40,8 +40,8 @@ local Tab = Window:Tab({
 Tab:Section({ Title = "功能", TextXAlignment = "Left", TextSize = 17 })
 
 Tab:Paragraph({
-    Title = "自动刷钱/经验说明",
-    Desc = "使用前请在服务器内设置里开启禁用建造者身份来保持游戏环境(否则无法使用)",
+    Title = "自动刷钱说明",
+    Desc = "使用前请在服务器内设置里开启Disable Witch来保持游戏环境(否则无法使用)",
 })
 
 getgenv().BobuxAutoFarm = false
@@ -408,7 +408,7 @@ local function startLockLoop()
                     if not notifiedEnabled then
                         WindUI:Notify({
                             Title = "已解锁",
-                            Content = "检测到禁用建筑者身份已开启,自动刷钱/经验开始传送",
+                            Content = "检测到Disable Witch已开启,安全传送开始传送",
                             Duration = 4
                         })
                         notifiedEnabled = true
@@ -419,7 +419,7 @@ local function startLockLoop()
                     if not notifiedDisabled then
                         WindUI:Notify({
                             Title = "已锁定",
-                            Content = "检测到禁用建筑者身份未开启,请前往设置开启后使用",
+                            Content = "检测到Disable Witch未开启,请前往设置开启后使用",
                             Duration = 4
                         })
                         notifiedDisabled = true
@@ -534,7 +534,7 @@ local function startFarmLoop()
 end
 
 Tab:Toggle({
-    Title = "自动刷钱/经验",
+    Title = "安全传送",
     Default = false,
     Callback = function(Value)
         getgenv().BobuxAutoFarm = Value
@@ -549,7 +549,7 @@ Tab:Toggle({
             startLockLoop()
             WindUI:Notify({
                 Title = "已开启",
-                Content = "自动刷钱/经验已锁定,请开启禁用建筑者身份后才可以使用",
+                Content = "安全传送已锁定,请开启Disable Witch后才可以使用",
                 Duration = 4
             })
             if not getgenv().OldTeleport then
@@ -562,7 +562,7 @@ Tab:Toggle({
             stopFlight()
             WindUI:Notify({
                 Title = "已关闭",
-                Content = "自动刷钱/经验已停止",
+                Content = "安全传送已停止",
                 Duration = 3
             })
         end

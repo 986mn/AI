@@ -401,7 +401,7 @@ local function startLockLoop()
     local notifiedEnabled = false
 
     task.spawn(function()
-        while getgenv().BobuxAutoFarm or getgenv().OldTeleport do
+        while getgenv().BobuxAutoFarm do
             if not getgenv().BobuxKeyUnlocked then
                 if checkUnlockCondition() then
                     getgenv().BobuxLock = false
@@ -575,18 +575,10 @@ Tab:Toggle({
     Callback = function(Value)
         getgenv().OldTeleport = Value
         if Value then
-            if not getgenv().BobuxKeyUnlocked then
-                if checkUnlockCondition() then
-                    getgenv().BobuxLock = false
-                else
-                    getgenv().BobuxLock = true
-                end
-            end
-            startLockLoop()
             WindUI:Notify({
                 Title = "瞬间传送已开启",
-                Content = "请开启Disable Witch后使用",
-                Duration = 3
+                Content = "自动传送已启动",
+                Duration = 2
             })
         else
             WindUI:Notify({
@@ -596,7 +588,7 @@ Tab:Toggle({
             })
         end
     end
-
+})
 
 Tab:Toggle({
     Title = "隐身(没啥用)",

